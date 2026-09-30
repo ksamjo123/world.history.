@@ -183,4 +183,92 @@ ok($$('.ev[aria-label]').length === $$('.ev').length, 'aria-label 미설정 항�
 ok($$('nav button[role=tab]').length >= 5, '탭 role 누락');
 
 console.log('\n' + (fail ? '✗ 실패 ' + fail + '건 · 통과 ' + pass + '건' : '✓ 전부 통과 (' + pass + '건)'));
+
+
+/* ── 15. 연결선 ── */
+{
+  console.log('\n── 15. 연결선');
+  const w3 = boot();
+  const d3 = w3.document, C3 = w3.CHRONO;
+  const linked = [];
+  C3.lanes.filter(l => l.k === 'ev').forEach(l => C3[l.src].forEach(e => { if (e.l) linked.push(e); }));
+  ok(linked.length > 100, '연결된 사건이 너무 적음', linked.length + '개');
+  // 연결 대상이 실제로 존재하는가
+  const ids = new Set();
+  C3.lanes.filter(l => l.k === 'ev').forEach(l => C3[l.src].forEach(e => ids.add(e.id)));
+  let dangling = 0;
+  linked.forEach(e => e.l.forEach(([to]) => { if (!ids.has(to)) dangling++; }));
+  ok(dangling === 0, '존재하지 않는 대상을 가리키는 연결', dangling + '건');
+  // 양방향인가
+  let oneWay = 0;
+  const map = {}; C3.lanes.filter(l => l.k === 'ev').forEach(l => C3[l.src].forEach(e => map[e.id] = e));
+  linked.forEach(e => e.l.forEach(([to]) => {
+    const o = map[to];
+    if (!o || !o.l || !o.l.some(x => x[0] === e.id)) oneWay++;
+  }));
+  ok(oneWay === 0, '한쪽만 이어진 연결', oneWay + '건');
+  // 마우스를 올리면 곡선이 그려지는가
+  const target = linked.sort((a, b) => b.l.length - a.l.length)[0];
+  const el = [...d3.querySelectorAll('.ev,.span,.flow,.thres')].find(n => n.dataset.id === target.id);
+  ok(!!el, '연결 대상 항목이 DOM에 없음');
+  if (el) {
+    el.dispatchEvent(new w3.MouseEvent('pointerover', { bubbles: true }));
+    const paths = d3.querySelectorAll('#links path').length;
+    ok(paths > 0, '마우스를 올려도 곡선이 그려지지 않음', paths + '개');
+    ok(d3.querySelectorAll('.faded').length > 50, '나머지 항목이 흐려지지 않음');
+    ok(d3.querySelectorAll('.lit').length >= 2, '강조된 항목이 부족함');
+    console.log('  「' + target.t + '」 → 곡선 ' + paths + '개 · 강조 ' +
+      d3.querySelectorAll('.lit').length + ' · 흐림 ' + d3.querySelectorAll('.faded').length);
+    // 상세 패널에 이어진 사건 목록
+    el.dispatchEvent(new w3.MouseEvent('click', { bubbles: true }));
+    const b = d3.getElementById('d-body').innerHTML;
+    ok(b.includes('이어진 사건'), '상세 패널에 연결 목록이 없음');
+    ok(d3.querySelectorAll('.lk').length === target.l.length, '연결 목록 개수 불일치');
+  }
+}
+/* ── 16. 연결의 건전성 ── */
+{
+  console.log('\n── 16. 연결의 건전성');
+  const w4 = boot();
+  const C4 = w4.CHRONO;
+  const M4 = {};
+  C4.lanes.filter(l => l.k === 'ev').forEach(l => C4[l.src].forEach(e => M4[e.id] = e));
+  // 유형이 없는 연결
+  let noType = 0;
+  Object.values(M4).forEach(e => (e.l || []).forEach(x => { if (!x[2]) noType++; }));
+  ok(noType === 0, '유형이 지정되지 않은 연결', noType + '건');
+  // 자기 자신을 가리키는 연결
+  let selfRef = 0;
+  Object.values(M4).forEach(e => (e.l || []).forEach(x => { if (x[0] === e.id) selfRef++; }));
+  ok(selfRef === 0, '자기 자신을 가리키는 연결', selfRef + '건');
+  // 설명이 빈 연결
+  let noKind = 0;
+  Object.values(M4).forEach(e => (e.l || []).forEach(x => { if (!x[1] || !x[1].trim()) noKind++; }));
+  ok(noKind === 0, '설명이 없는 연결', noKind + '건');
+  // 계보 단계가 엉뚱한 항목에 붙었는지
+  const byY4 = {};
+  C4.lanes.filter(l => l.k === 'ev').forEach(l => C4[l.src].forEach(e => (byY4[e.y] = byY4[e.y] || []).push(e)));
+  const MAP = C4.threadMap || {};
+  let mis = 0;
+  C4.threads.forEach(t => t.s.forEach(s => {
+    const arr = byY4[s[0]] || [];
+    if (!arr.length) return;
+    const keys = s[1].replace(/[『』「」·]/g, ' ').split(/\s+/).filter(x => x.length >= 2);
+    const byKey = arr.some(e => keys.some(k => e.t.includes(k) || (e.k || '').includes(k)));
+    const byMap = (MAP[t.t] || {})[s[0]];
+    if (!byKey && !byMap) mis++;   // 어느 쪽으로도 짝지어지지 않은 단계
+  }));
+  console.log('  연결 ' + Object.values(M4).reduce((s, e) => s + (e.l ? e.l.length : 0), 0) / 2 +
+    '쌍 · 짝을 못 찾은 계보 단계 ' + mis + '개');
+  // 500년 넘는 조건·계승은 검토 대상으로만 알린다
+  const seen4 = new Set(); let longSpan = 0;
+  Object.values(M4).forEach(e => (e.l || []).forEach(([to, , ty]) => {
+    const k = [e.id, to].sort().join('|'); if (seen4.has(k)) return; seen4.add(k);
+    const o = M4[to]; if (!o) return;
+    if ((ty === 'cause' || ty === 'succeed') && Math.abs(e.y - o.y) > 500) longSpan++;
+  }));
+  console.log('  500년 이상 벌어진 조건·계승 ' + longSpan + '건 (계보는 정상, 새로 늘면 검토할 것)');
+}
+
+console.log('\n' + (fail ? '✗ 실패 ' + fail + '건' : '✓ 전부 통과 (' + pass + '건)'));
 process.exit(fail ? 1 : 0);

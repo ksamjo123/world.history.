@@ -78,6 +78,26 @@ nav button:focus-visible,.tool:focus-visible,input:focus-visible{outline:2px sol
   font-weight:500;white-space:nowrap;overflow:hidden;background:var(--flow);color:#F7EFEB;cursor:pointer;
   clip-path:polygon(0 0,calc(100% - 13px) 0,100% 50%,calc(100% - 13px) 100%,0 100%)}
 .dim{opacity:.2}
+#links{position:absolute;top:0;left:0;pointer-events:none;z-index:6;overflow:visible}
+#links path.echo,#links path.oppose{stroke:#5E6158;opacity:.5}
+#links path{fill:none;stroke:var(--flow);stroke-width:1.2;opacity:.6;
+  stroke-linecap:round;animation:draw .35s ease-out}
+@keyframes draw{from{opacity:0}to{opacity:.6}}
+.faded{opacity:.13}
+.lit{opacity:1}
+.ev.lit{font-weight:600}
+.ev.lit::before{width:7px;height:7px;top:5.5px;left:-4.5px}
+.lkbox{border-radius:5px;background:#E6E2D8;padding:2px 12px}
+.lk{display:flex;gap:10px;padding:8px 0;border-top:1px solid rgba(0,0,0,.09);cursor:pointer}
+.lk:first-child{border-top:none}
+.lk:hover{background:rgba(0,0,0,.035)}
+.lk b{flex:0 0 42px;font-size:12.5px;font-weight:600;color:var(--flow);font-variant-numeric:tabular-nums}
+.lk span{font-size:13.5px;line-height:1.5}
+.lk i{display:block;font-style:normal;font-size:11.5px;color:var(--ink-soft);margin-top:3px}
+.ty{font-style:normal;font-size:10.5px;padding:1px 5px;border-radius:2px;margin-right:5px;
+  background:rgba(163,59,37,.13);color:#7A2A18}
+.ty.echo,.ty.oppose{background:rgba(94,97,88,.16);color:#4A4D45}
+@media (prefers-reduced-motion:reduce){#links path{animation:none}}
 .ev:focus-visible,.span:focus-visible,.flow:focus-visible,.thres:focus-visible{
   outline:2px solid var(--flow);outline-offset:2px;z-index:9}
 @keyframes fl{0%,100%{box-shadow:0 0 0 0 rgba(163,59,37,0)}35%{box-shadow:0 0 0 5px rgba(163,59,37,.5)}}

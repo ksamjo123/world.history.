@@ -184,6 +184,8 @@ C.people.forEach(p => {
     dates: `전제 ${P.axioms.length} · 경계 ${P.guards.length} · 편들지 않는 것 ${P.limits.length} · 용어 ${P.terms.length}`,
     body: `<p class="lede">${esc(P.lede)}</p>` + sec('전제', P.axioms) +
       sec('스스로 경계하는 것', P.guards) + sec('편을 들지 않는 것', P.limits) +
+      `<h2>연결이 주장하는 것</h2><p class="cost" style="margin:0 0 14px">${esc(P.links.lede)}</p>` +
+      P.links.items.map(x => `<div class="ax"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('') +
       `<h2>경계 표시를 읽는 법</h2><p class="cost" style="margin:0 0 14px">${esc(P.warn.lede)}</p>` +
       P.warn.items.map(x => `<div class="ax"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('') +
       `<h2>정치사의 자리</h2><p class="cost" style="margin:0 0 14px">${esc(P.political.lede)}</p>` +

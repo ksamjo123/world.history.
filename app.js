@@ -31,6 +31,9 @@ const rowsEl = $('rows'), rulerEl = $('ruler'), innerEl = $('inner'), tlEl = $('
 const head = $('head'), headyr = $('headyr');
 let BANDS = [], TICKS = [], ROWS = [], rtrack = null, tickIv = null;
 let levelMode = 'auto';            // 'auto' | 'all'
+const BYID = {};                   // 식별자 → {it, R}
+let FORCE = new Set();             // 등급·컬링을 무시하고 보여야 할 항목
+let LIT = null;                    // 현재 강조 중인 항목
 const CULL = 700;                  // 화면 밖 이 픽셀까지만 실제로 그린다
 
 /* 배율이 오를수록 낮은 등급까지 보인다. 검색 중에는 전부 본다. */
@@ -100,7 +103,8 @@ function buildTimeline() {
         el.dataset.s = [d.t, d.n, d.k, d.i, d.dt,
           d.x ? [d.x.q, d.x.a, d.x.b, d.x.r].join(' ') : ''].filter(Boolean).join(' ');
         if (d.x) el.dataset.x = JSON.stringify(d.x);
-        items.push({ el, k: 'ev', y: d.y, tw, r: d.r || 2 });
+        el.dataset.id = d.id || '';
+        items.push({ el, k: 'ev', y: d.y, tw, r: d.r || 2, id: d.id, links: d.l || [] });
       } else {
         const isTh = L.k === 'th';
         txt = (isTh ? '◆ ' : '') + d.t;
@@ -114,7 +118,8 @@ function buildTimeline() {
           d.x ? [d.x.q, d.x.a, d.x.b, d.x.r].join(' ') : ''].filter(Boolean).join(' ');
         if (d.x) el.dataset.x = JSON.stringify(d.x);
         if (isTh) el.dataset.th = idx;
-        items.push({ el, k: 'sp', a: d.a, b: d.b, tw, r: d.r || 2 });
+        el.dataset.id = d.id || '';
+        items.push({ el, k: 'sp', a: d.a, b: d.b, tw, r: d.r || 2, id: d.id, links: d.l || [] });
       }
       el.textContent = txt;
       el.dataset.lane = L.t; el.dataset.color = L.c; el.dataset.title = txt;
@@ -125,7 +130,7 @@ function buildTimeline() {
 
     row.appendChild(lab); row.appendChild(track);
     rowsEl.appendChild(row);
-    items.forEach(i => i.row = row);
+    items.forEach(i => { i.row = row; if (i.id) BYID[i.id] = i; });
     ROWS.push({ row, track, items, rowH });
   });
 }
@@ -149,7 +154,7 @@ function layout() {
   ROWS.forEach(R => {
     const ends = []; let maxRow = 0;
     R.items.forEach(it => {
-      if (it.r > tier) { it.on = false; return; }
+      if (it.r > tier && !FORCE.has(it.id)) { it.on = false; return; }
       it.on = true;
       const x1 = it.k === 'ev' ? xOf(it.y, E) : xOf(it.a, E);
       let w = null, x2;
@@ -172,7 +177,7 @@ function layout() {
 function paint() {
   const L = tlEl.scrollLeft - CULL, R2 = tlEl.scrollLeft + tlEl.clientWidth + CULL;
   ROWS.forEach(R => R.items.forEach(it => {
-    const vis = it.on && it.x2 > L && it.x < R2;
+    const vis = it.on && (FORCE.has(it.id) || (it.x2 > L && it.x < R2));
     if (!vis) { if (it.shown !== false) { it.el.style.display = 'none'; it.shown = false; } return; }
     if (it.shown === false) it.el.style.display = '';
     it.shown = true;
@@ -238,6 +243,55 @@ tlEl.addEventListener('wheel', e => {
   refresh(); center(y); showScale();
 }, { passive: false });
 
+/* ---------- 연결선 ---------- */
+const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+svg.id = 'links'; svg.setAttribute('aria-hidden', 'true');
+innerEl.insertBefore(svg, head);
+
+function anchor(it) {
+  const h = it.el.offsetHeight || 19;
+  return [LW + it.x + Math.min(it.w || it.tw, 90) / 2, it.row.offsetTop + it.top + h / 2];
+}
+function curve(a, b) {
+  const [x1, y1] = anchor(a), [x2, y2] = anchor(b);
+  const mx = (x1 + x2) / 2;
+  return 'M' + x1 + ',' + y1 + ' C' + mx + ',' + y1 + ' ' + mx + ',' + y2 + ' ' + x2 + ',' + y2;
+}
+
+function clearLinks() {
+  if (!LIT) return;
+  LIT = null; FORCE = new Set();
+  svg.innerHTML = '';
+  rowsEl.querySelectorAll('.lit,.faded').forEach(n => n.classList.remove('lit', 'faded'));
+  layout();
+}
+
+function showLinks(it) {
+  if (!it || !it.links || !it.links.length) return;
+  if (LIT === it) return;
+  LIT = it;
+  FORCE = new Set([it.id]);
+  it.links.forEach(([id]) => FORCE.add(id));
+  layout();                               // 숨어 있던 상대를 꺼낸다
+
+  const all = rowsEl.querySelectorAll('.ev,.span,.flow,.thres');
+  all.forEach(n => {
+    const on = FORCE.has(n.dataset.id);
+    n.classList.toggle('lit', on);
+    n.classList.toggle('faded', !on);
+  });
+  svg.setAttribute('width', innerEl.offsetWidth);
+  svg.setAttribute('height', innerEl.offsetHeight);
+  svg.setAttribute('viewBox', '0 0 ' + innerEl.offsetWidth + ' ' + innerEl.offsetHeight);
+  svg.innerHTML = it.links.map(([id, , ty]) => {
+    const to = BYID[id];
+    if (!to || to.x === undefined) return '';
+    const dashed = (ty === 'echo' || ty === 'oppose');
+    return '<path class="' + (ty || 'cause') + '" d="' + curve(it, to) + '"' +
+      (dashed ? ' stroke-dasharray="4 4"' : '') + '/>';
+  }).join('');
+}
+
 /* ---------- 세로 기준선 ---------- */
 function moveHead(cx) {
   const r = innerEl.getBoundingClientRect(), px = cx - r.left - LW;
@@ -247,6 +301,11 @@ function moveHead(cx) {
   headyr.textContent = '주후 ' + Math.max(0, yearAt(px)) + '년';
   headyr.style.left = (px > innerEl.offsetWidth - 90 ? -64 : 3) + 'px';
 }
+tlEl.addEventListener('pointerover', e => {
+  const n = e.target.closest('.ev,.span,.flow,.thres');
+  if (n && n.dataset.id && BYID[n.dataset.id]) showLinks(BYID[n.dataset.id]);
+});
+tlEl.addEventListener('pointerleave', clearLinks);
 tlEl.addEventListener('pointermove', e => moveHead(e.clientX));
 tlEl.addEventListener('pointerdown', e => moveHead(e.clientX));
 tlEl.addEventListener('pointerleave', () => head.style.display = 'none');
@@ -260,6 +319,21 @@ function thresholdHTML(t) {
     '<div class="st">새 대답 — 여기서 시대가 열린다</div><div class="bk ans">' + esc(t.ans) + '</div>' +
     '<div class="st">치른 대가</div><div class="cost">' + esc(t.cost) + '</div>' +
     (t.i ? '<div class="st rfl">개혁주의적 읽기</div><div class="bk rf">' + esc(t.i) + '</div>' : '');
+}
+
+function linkListHTML(id) {
+  const it = BYID[id];
+  if (!it || !it.links || !it.links.length) return '';
+  const rows = it.links.map(([to, kind, ty]) => {
+    const o = BYID[to];
+    if (!o) return '';
+    const d = o.el.dataset;
+    const T = C.linkTypes && C.linkTypes[ty || 'cause'];
+    return '<div class="lk" data-goid="' + to + '"><b>' + esc(String(d.yr).split('–')[0]) + '</b>' +
+      '<span>' + esc(d.title) +
+      '<i><em class="ty ' + (ty || 'cause') + '">' + esc(T ? T[0] : '') + '</em> ' + esc(kind) + '</i></span></div>';
+  }).join('');
+  return '<div class="st">이어진 사건 ' + it.links.length + '</div><div class="lkbox">' + rows + '</div>';
 }
 
 function disputeHTML(x) {
@@ -308,6 +382,10 @@ function drawPerspective() {
     sec('전제', P.axioms) +
     sec('스스로 경계하는 것', P.guards) +
     sec('편을 들지 않는 것', P.limits) +
+    '<h2 style="font-family:\'Gowun Batang\',serif;font-size:18px;margin:26px 0 8px">연결이 주장하는 것</h2>' +
+    '<p class="cost" style="margin:0 0 12px">' + esc(P.links.lede) + '</p>' +
+    P.links.items.map(x => '<div class="ax"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) +
+      '</span></div>').join('') +
     '<h2 style="font-family:\'Gowun Batang\',serif;font-size:18px;margin:26px 0 8px">경계 표시를 읽는 법</h2>' +
     '<p class="cost" style="margin:0 0 12px">' + esc(P.warn.lede) + '</p>' +
     P.warn.items.map(x => '<div class="ax"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) +
@@ -339,6 +417,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('click', e => {
   const t = e.target.closest('.ev,.span,.flow,.thres');
   if (!t) return;
+  if (t.dataset.id && BYID[t.dataset.id]) showLinks(BYID[t.dataset.id]);
   $('d-yr').textContent = t.dataset.yr;
   $('d-title').textContent = t.dataset.title;
   const body = $('d-body');
@@ -346,12 +425,12 @@ document.addEventListener('click', e => {
   else body.innerHTML = '<span>' + esc(t.dataset.body || '—') + '</span>' +
     (t.dataset.dt ? '<div class="st">연대에 관하여</div><div class="dtn">' + esc(t.dataset.dt) + '</div>' : '') +
     (t.dataset.i ? '<div class="st rfl">개혁주의적 읽기</div><div class="bk rf">' + esc(t.dataset.i) + '</div>' : '') +
-    (t.dataset.x ? disputeHTML(JSON.parse(t.dataset.x)) : '');
+    (t.dataset.x ? disputeHTML(JSON.parse(t.dataset.x)) : '') + linkListHTML(t.dataset.id);
   const tag = $('d-tag');
   tag.textContent = t.dataset.lane; tag.style.background = t.dataset.color;
   det.classList.add('open');
 });
-$('close').onclick = () => det.classList.remove('open');
+$('close').onclick = () => { det.classList.remove('open'); clearLinks(); };
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && det.classList.contains('open')) { det.classList.remove('open'); return; }
   if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
@@ -370,7 +449,12 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('click', e => {
   const g = e.target.closest('[data-go]');
-  if (g) gotoYear(+g.dataset.go);
+  if (g) { gotoYear(+g.dataset.go); return; }
+  const k = e.target.closest('[data-goid]');
+  if (k) {
+    const o = BYID[k.dataset.goid];
+    if (o) { det.classList.remove('open'); gotoYear(o.y || o.a); setTimeout(() => o.el.click(), 520); }
+  }
 });
 
 /* ---------- 검색 ---------- */
