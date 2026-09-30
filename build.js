@@ -7,7 +7,7 @@ global.window = {};
 require('./data.js');
 const C = window.CHRONO;
 
-const SITE = (process.argv[2] || 'https://example.github.io/chrono').replace(/\/$/, '');
+const SITE = (process.argv[2] || 'https://ksamjo123.github.io/world.history').replace(/\/$/, '');
 const OUT = __dirname;
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const strip = s => String(s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();

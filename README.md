@@ -176,11 +176,12 @@ data.js를 고친 뒤에는 이것을 한 번 돌릴 것. 특히 레인을 추�
 
 ## 정적 페이지 생성
 
-    node build.js https://내주소
+    node build.js
 
-주소를 안 주면 example.github.io 자리표시자가 들어간다.
-배포 주소가 정해지면 그 주소로 다시 돌리고, index.html 안의
-example.github.io도 함께 바꿀 것.
+배포 주소는 https://ksamjo123.github.io/world.history 로 고정되어 있다.
+주소가 바뀌면 build.js 상단의 기본값과 index.html 안의 주소를 함께 고칠 것.
+
+저장소: https://github.com/ksamjo123/world.history
 
 ## 띄우기
 
