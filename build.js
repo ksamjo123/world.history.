@@ -105,6 +105,7 @@ C.thresholds.forEach((t, i) => {
 <div class="st">피할 수 없는 질문</div><p class="qz">${esc(t.q)}</p>
 <div class="st">새 대답 — 여기서 시대가 열린다</div><div class="bk ans">${esc(t.ans)}</div>
 <div class="st">치른 대가</div><p class="cost">${esc(t.cost)}</p>
+${t.i ? `<div class="st">개혁주의적 읽기</div><div class="bk rf">${esc(t.i)}</div>` : ''}
 <a class="cta" href="../?y=${t.a}">연표에서 ${t.a}년 전후 보기 →</a>`
       + rel('이 시기의 인물', ppl) + rel('이어지는 주제', near) + rel('다른 문턱', others),
     jsonld: {
@@ -171,6 +172,35 @@ C.people.forEach(p => {
   }));
 });
 
+/* ---------- 역사관 페이지 ---------- */
+{
+  const P = C.perspective;
+  const sec = (title, arr) => `<h2>${esc(title)}</h2>` + arr.map(x =>
+    `<div class="ax"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('');
+  const desc = '이 연표는 개혁주의 관점에서 엮였습니다. 섭리·언약·말씀의 규범성·일반은총·전적 타락·semper reformanda·영역 주권이라는 전제와, 스스로 경계하는 것들, 편을 들지 않는 영역, 서지 방침, 그리고 「성경」·「칼빈」처럼 어느 말을 택했고 왜 택했는지를 밝힙니다.';
+  const html = page({
+    url: 'perspective.html', title: '역사를 보는 자리 — 개혁주의 역사관 | 동기 연표', desc,
+    kind: '관점 선언', h1: esc(P.t),
+    dates: `전제 ${P.axioms.length} · 경계 ${P.guards.length} · 편들지 않는 것 ${P.limits.length} · 용어 ${P.terms.length}`,
+    body: `<p class="lede">${esc(P.lede)}</p>` + sec('전제', P.axioms) +
+      sec('스스로 경계하는 것', P.guards) + sec('편을 들지 않는 것', P.limits) +
+      `<h2>경계 표시를 읽는 법</h2><p class="cost" style="margin:0 0 14px">${esc(P.warn.lede)}</p>` +
+      P.warn.items.map(x => `<div class="ax"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('') +
+      `<h2>정치사의 자리</h2><p class="cost" style="margin:0 0 14px">${esc(P.political.lede)}</p>` +
+      P.political.items.map(x => `<div class="ax"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('') +
+      `<h2>쓰는 말</h2><p class="cost" style="margin:0 0 14px">${esc(P.termsLede)}</p>` +
+      P.terms.map(t => `<div class="ax"><b>${esc(t[0])} <span style="font-weight:300;color:var(--ink-soft)">— ${esc(t[1])} 대신</span></b><span>${esc(t[2])}</span></div>`).join('') +
+      `<p class="cost" style="margin-top:28px;border-top:1px solid var(--rule);padding-top:18px">${esc(P.close)}</p>` +
+      `<h2>${esc(C.method.t)}</h2><p class="cost" style="margin:0 0 14px">${esc(C.method.lede)}</p>` +
+      C.method.items.map(x => `<div class="ax"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('') +
+      `<a class="cta" href="./">연표로 →</a>` +
+      rel('이 관점으로 읽은 문턱', C.thresholds.map(t => ({ href: 't/' + t.slug + '.html', t: t.t, s: t.a + '–' + t.b }))),
+    jsonld: { '@context': 'https://schema.org', '@type': 'Article', headline: P.t, description: desc, inLanguage: 'ko' }
+  }).replace(/\.\.\/doc\.css/, 'doc.css').replace(/href="\.\.\/"/g, 'href="./"');
+  fs.writeFileSync(path.join(OUT, 'perspective.html'), html);
+  urls.push('perspective.html');
+}
+
 /* ---------- 목차 ---------- */
 const li = (href, t, s) => `<li><b><a href="${href}">${esc(t)}</a></b>${s ? '<p>' + esc(s) + '</p>' : ''}</li>`;
 const indexHtml = page({
@@ -178,7 +208,8 @@ const indexHtml = page({
   desc: '시대의 문턱 7편, 주제 계보 5편, 인물 ' + C.people.length + '명. 서기 1년부터 오늘까지의 사상사를 문턱·주제·인물 세 갈래로 읽습니다.',
   kind: '목차', h1: '전체 문서',
   dates: `문턱 ${C.thresholds.length}편 · 계보 ${C.threads.length}편 · 인물 ${C.people.length}명`,
-  body: `<p class="lede">연표는 같은 시대를 가로로 비교합니다. 아래 문서들은 그 연표를 세 방향으로 풀어 읽은 것입니다.</p>
+  body: `<p class="lede">연표는 같은 시대를 가로로 비교합니다. 아래 문서들은 그 연표를 세 방향으로 풀어 읽은 것입니다. 이 연표가 어느 자리에서 역사를 보는지는 <a href="perspective.html">역사를 보는 자리</a>에 밝혀 두었습니다.</p>
+<h2>관점</h2><ul class="grid">${li('perspective.html', '역사를 보는 자리 — 개혁주의 역사관', '무엇을 전제하고, 무엇을 경계하며, 어디서 내부 이견이 갈리는가')}</ul>
 <h2>시대의 문턱</h2><ul class="grid">${C.thresholds.map(t => li('t/' + t.slug + '.html', t.t, `${t.a}–${t.b} · ${clip(t.q, 60)}`)).join('')}</ul>
 <h2>주제 계보</h2><ul class="grid">${C.threads.map(t => li('s/' + t.slug + '.html', t.t, clip(t.d, 70))).join('')}</ul>
 <h2>인물</h2><ul class="grid">${[...C.people].sort((a, b) => a.a - b.a).map(p => li('p/' + p.slug + '.html', `${p.n} (${p.a}–${p.b})`, clip(p.d, 70))).join('')}</ul>`,

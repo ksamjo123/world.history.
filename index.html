@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>동기 연표 · 사상과 사건 2000년</title>
-<meta name="description" content="서기 1년부터 오늘까지, 신학·철학·정치·과학과 이슬람·동아시아·한국에서 무엇이 동시에 일어났는지, 그리고 시대가 열리는 문턱마다 무엇이 무너지고 무엇이 답으로 나왔는지 한 장에 정리한 연표.">
+<meta name="description" content="주후 1년부터 오늘까지, 신학·철학·정치·과학과 이슬람·동아시아·한국에서 무엇이 동시에 일어났는지, 그리고 시대가 열리는 문턱마다 무엇이 무너지고 무엇이 답으로 나왔는지 한 장에 정리한 연표.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -13,11 +13,11 @@
 <meta property="og:site_name" content="동기 연표">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="동기 연표 · 사상과 사건이 서로를 밀고 당긴 2000년">
-<meta property="og:description" content="서기 1년부터 오늘까지, 신학·철학·정치·과학과 이슬람·동아시아·한국에서 무엇이 동시에 일어났는지를 한 장에 놓고 비교하는 연표.">
+<meta property="og:description" content="주후 1년부터 오늘까지, 신학·철학·정치·과학과 이슬람·동아시아·한국에서 무엇이 동시에 일어났는지를 한 장에 놓고 비교하는 연표. 개혁주의 관점을 밝히고 엮었습니다.">
 <meta property="og:url" content="https://example.github.io/chrono/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="동기 연표 · 사상과 사건 2000년">
-<meta name="twitter:description" content="시대가 열리는 문턱마다 무엇이 무너지고 무엇이 답으로 나왔는지, 서기 1년부터 오늘까지.">
+<meta name="twitter:description" content="시대가 열리는 문턱마다 무엇이 무너지고 무엇이 답으로 나왔는지, 주후 1년부터 오늘까지. 개혁주의 관점으로 엮은 연표.">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"동기 연표","alternateName":"사상과 사건 2000년","inLanguage":"ko","url":"https://example.github.io/chrono/"}</script>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -30,6 +30,7 @@
     <button id="tab-th" role="tab" aria-selected="false">시대의 문턱</button>
     <button id="tab-pe" role="tab" aria-selected="false">인물</button>
     <button id="tab-tr" role="tab" aria-selected="false">주제 계보</button>
+    <button id="tab-hv" role="tab" aria-selected="false">역사관</button>
     <a href="read.html" style="align-self:center;margin-left:6px;font-size:13px;color:#5E6158;text-decoration:none;white-space:nowrap">문서 52편 →</a>
   </nav>
 </header>
@@ -43,6 +44,7 @@
   <button class="tool" id="lvl">밀도: 자동</button>
   <span class="hint" id="mlab"></span>
   <span class="hint" id="zlab">배율 1.0×</span>
+  <span class="hint">방향키 이동 · +/− 배율 · Tab 항목 · Esc 닫기</span>
 </div>
 
 <div class="view" id="vtl">
@@ -65,6 +67,8 @@
   <div class="cards"></div>
 </div></div>
 
+<div class="view" id="vhv" hidden><div class="pad"><div class="cards"></div></div></div>
+
 <div class="view" id="vtr" hidden><div class="pad">
   <p class="lede">하나의 물음이 세기를 건너 어떻게 이어지는지 따라가는 세로 읽기입니다. 연표가 같은 시대의 가로 비교라면, 이쪽은 같은 주제의 세로 비교입니다.</p>
   <div class="cards"></div>
@@ -79,7 +83,7 @@
 </div>
 
 <footer>
-  <a href="read.html" style="color:#A33B25">문턱 7편 · 계보 5편 · 인물 38명 전체 목차</a> · 달력상 0년은 없습니다. 여기서 0은 서기 1년 직전의 눈금입니다. · 시간 축은 균등하지 않습니다. 눈금 간격이 좁을수록 그 구간을 넓게 늘린 것입니다. · 사조의 시작·끝 연도는 편의상의 경계이며 실제로는 겹치며 이어집니다.
+  <a href="perspective.html" style="color:#A33B25">이 연표의 관점과 서지 방침</a> · <a href="read.html" style="color:#A33B25">문턱 7편 · 계보 5편 · 인물 38명 전체 목차</a> · 연대는 주후(主後) 표기입니다. 달력상 0년은 없으며, 여기서 0은 주후 1년 직전의 눈금입니다. · 시간 축은 균등하지 않습니다. 눈금 간격이 좁을수록 그 구간을 넓게 늘린 것입니다. · 사조의 시작·끝 연도는 편의상의 경계이며 실제로는 겹치며 이어집니다.
 </footer>
 
 <script src="data.js"></script>

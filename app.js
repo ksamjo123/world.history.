@@ -48,7 +48,7 @@ function buildTimeline() {
 
   rulerEl.innerHTML = '';
   const corner = document.createElement('div');
-  corner.id = 'corner'; corner.textContent = '연도';
+  corner.id = 'corner'; corner.textContent = '주후';
   rulerEl.appendChild(corner);
   rtrack = document.createElement('div');
   rtrack.id = 'rtrack';
@@ -96,7 +96,10 @@ function buildTimeline() {
         txt = d.t;
         el.className = 'ev'; el.style.color = L.c;
         tw = textW(txt, 11.5, 400) + PAD.ev;
-        el.dataset.yr = d.y; el.dataset.body = d.n || ''; el.dataset.k = d.k || '';
+        el.dataset.yr = d.y; el.dataset.body = d.n || ''; el.dataset.k = d.k || ''; el.dataset.i = d.i || ''; el.dataset.dt = d.dt || '';
+        el.dataset.s = [d.t, d.n, d.k, d.i, d.dt,
+          d.x ? [d.x.q, d.x.a, d.x.b, d.x.r].join(' ') : ''].filter(Boolean).join(' ');
+        if (d.x) el.dataset.x = JSON.stringify(d.x);
         items.push({ el, k: 'ev', y: d.y, tw, r: d.r || 2 });
       } else {
         const isTh = L.k === 'th';
@@ -105,12 +108,18 @@ function buildTimeline() {
         if (L.k === 'span') el.style.background = L.c;
         tw = isTh ? textW(txt, 12, 500) + PAD.th
                   : textW(txt, 11.5, 400) + PAD[L.k === 'flow' ? 'flow' : 'span'];
-        el.dataset.yr = d.a + '–' + d.b; el.dataset.body = d.n || ''; el.dataset.k = d.k || '';
+        el.dataset.yr = d.a + '–' + d.b; el.dataset.body = d.n || ''; el.dataset.k = d.k || ''; el.dataset.i = d.i || '';
+        el.dataset.s = [d.t, d.n, d.k, d.i, d.old, d.q, d.ans, d.cost].filter(Boolean).join(' '); el.dataset.dt = d.dt || '';
+        el.dataset.s = [d.t, d.n, d.k, d.i, d.dt,
+          d.x ? [d.x.q, d.x.a, d.x.b, d.x.r].join(' ') : ''].filter(Boolean).join(' ');
+        if (d.x) el.dataset.x = JSON.stringify(d.x);
         if (isTh) el.dataset.th = idx;
         items.push({ el, k: 'sp', a: d.a, b: d.b, tw, r: d.r || 2 });
       }
       el.textContent = txt;
       el.dataset.lane = L.t; el.dataset.color = L.c; el.dataset.title = txt;
+      el.tabIndex = 0; el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', (L.k === 'ev' ? d.y + '년 ' : d.a + '년부터 ' + d.b + '년 ') + txt);
       track.appendChild(el);
     });
 
@@ -194,7 +203,7 @@ function refresh() {
 
 /* ---------- 부드러운 확대 ---------- */
 const center = y => { tlEl.scrollLeft = xOf(y, eraX()) + LW - tlEl.clientWidth / 2; };
-const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 let anim = null;
 
 function zoomTo(target, anchor) {
@@ -235,7 +244,7 @@ function moveHead(cx) {
   if (px < 0) { head.style.display = 'none'; return; }
   head.style.display = 'block';
   head.style.left = (px + LW) + 'px';
-  headyr.textContent = Math.max(0, yearAt(px)) + '년';
+  headyr.textContent = '주후 ' + Math.max(0, yearAt(px)) + '년';
   headyr.style.left = (px > innerEl.offsetWidth - 90 ? -64 : 3) + 'px';
 }
 tlEl.addEventListener('pointermove', e => moveHead(e.clientX));
@@ -249,7 +258,22 @@ function thresholdHTML(t) {
     t.cr.map(c => '<div class="cl"><b>' + esc(c[0]) + '</b><span>' + esc(c[1]) + '</span></div>').join('') + '</div>' +
     '<div class="st">피할 수 없는 질문</div><div class="qz">' + esc(t.q) + '</div>' +
     '<div class="st">새 대답 — 여기서 시대가 열린다</div><div class="bk ans">' + esc(t.ans) + '</div>' +
-    '<div class="st">치른 대가</div><div class="cost">' + esc(t.cost) + '</div>';
+    '<div class="st">치른 대가</div><div class="cost">' + esc(t.cost) + '</div>' +
+    (t.i ? '<div class="st rfl">개혁주의적 읽기</div><div class="bk rf">' + esc(t.i) + '</div>' : '');
+}
+
+function disputeHTML(x) {
+  const w = x.w || null;
+  const lv = w && C.warnLevels[w];
+  const head = lv
+    ? '<div class="wl ' + w + '"><b>' + esc(lv[0]) + '</b><span>' + esc(lv[1]) + '</span></div>'
+    : '<div class="st">쟁점 — 이 대목은 다툽니다</div>';
+  return head + '<div class="xd' + (w ? ' ' + w : '') + '">' +
+    '<div class="xq">' + esc(x.q) + '</div>' +
+    '<div class="xr"><b>이 연표</b><span>' + esc(x.a) + '</span></div>' +
+    '<div class="xr"><b>다른 읽기</b><span>' + esc(x.b) + '</span></div>' +
+    (x.r ? '<div class="xa"><b>응답</b><span>' + esc(x.r) + '</span></div>' : '') +
+    '</div>';
 }
 
 /* ---------- 카드 뷰 ---------- */
@@ -261,7 +285,7 @@ function drawThresholds() {
 function drawPeople() {
   const lane = id => (C.lanes.find(l => l.id === id) || {}).c || '#5E6158';
   $('vpe').querySelector('.cards').innerHTML = [...C.people].sort((a, b) => a.a - b.a).map(p =>
-    '<div class="prow"><div class="pmeta"><b>' + esc(p.n) + '</b><small>' + p.a + '–' + p.b + '</small>' +
+    '<div class="prow" data-go="' + p.a + '" title="연표에서 보기"><div class="pmeta"><b>' + esc(p.n) + '</b><small>' + p.a + '–' + p.b + '</small>' +
     '<div class="lifebar"><i style="left:' + (p.a / 2030 * 100).toFixed(1) + '%;width:' +
     Math.max(0.8, (p.b - p.a) / 2030 * 100).toFixed(1) + '%;background:' + lane(p.f) + '"></i></div></div>' +
     '<div class="pbody"><div class="o">' + esc(p.o) + '</div><div class="d">' + esc(p.d) + '</div>' +
@@ -270,12 +294,48 @@ function drawPeople() {
 function drawThreads() {
   $('vtr').querySelector('.cards').innerHTML = C.threads.map(t =>
     '<div class="card"><h2>' + esc(t.t) + '</h2><p class="cost" style="margin:0 0 6px">' + esc(t.d) + '</p>' +
-    t.s.map(s => '<div class="step"><div class="sy">' + s[0] + '</div><div class="sb"><b>' +
+    t.s.map(s => '<div class="step" data-go="' + s[0] + '" title="연표에서 보기"><div class="sy">' + s[0] + '</div><div class="sb"><b>' +
       esc(s[1]) + '</b><span>' + esc(s[2]) + '</span></div></div>').join('') + '</div>').join('');
+}
+
+function drawPerspective() {
+  const P = C.perspective;
+  const sec = (title, arr) => '<h2 style="font-family:\'Gowun Batang\',serif;font-size:18px;margin:26px 0 8px">' +
+    esc(title) + '</h2>' + arr.map(x =>
+    '<div class="ax"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></div>').join('');
+  $('vhv').querySelector('.cards').innerHTML =
+    '<p class="lede">' + esc(P.lede) + '</p>' +
+    sec('전제', P.axioms) +
+    sec('스스로 경계하는 것', P.guards) +
+    sec('편을 들지 않는 것', P.limits) +
+    '<h2 style="font-family:\'Gowun Batang\',serif;font-size:18px;margin:26px 0 8px">경계 표시를 읽는 법</h2>' +
+    '<p class="cost" style="margin:0 0 12px">' + esc(P.warn.lede) + '</p>' +
+    P.warn.items.map(x => '<div class="ax"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) +
+      '</span></div>').join('') +
+    '<h2 style="font-family:\'Gowun Batang\',serif;font-size:18px;margin:26px 0 8px">정치사의 자리</h2>' +
+    '<p class="cost" style="margin:0 0 12px">' + esc(P.political.lede) + '</p>' +
+    P.political.items.map(x => '<div class="ax"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) +
+      '</span></div>').join('') +
+    '<h2 style="font-family:\'Gowun Batang\',serif;font-size:18px;margin:26px 0 8px">쓰는 말</h2>' +
+    '<p class="cost" style="margin:0 0 12px">' + esc(P.termsLede) + '</p>' +
+    P.terms.map(t => '<div class="ax"><b>' + esc(t[0]) +
+      ' <span style="font-weight:300;color:var(--ink-soft)">— ' + esc(t[1]) + ' 대신</span></b>' +
+      '<span>' + esc(t[2]) + '</span></div>').join('') +
+    '<p class="cost" style="margin-top:26px;border-top:1px solid var(--rule);padding-top:16px">' +
+    esc(P.close) + '</p>' +
+    '<h2 style="font-family:\'Gowun Batang\',serif;font-size:18px;margin:32px 0 8px">' +
+    esc(C.method.t) + '</h2><p class="cost" style="margin:0 0 12px">' + esc(C.method.lede) + '</p>' +
+    C.method.items.map(x => '<div class="ax"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) +
+      '</span></div>').join('');
 }
 
 /* ---------- 상세 패널 ---------- */
 const det = $('detail');
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const t = document.activeElement;
+  if (t && t.matches && t.matches('.ev,.span,.flow,.thres')) { e.preventDefault(); t.click(); }
+});
 document.addEventListener('click', e => {
   const t = e.target.closest('.ev,.span,.flow,.thres');
   if (!t) return;
@@ -283,12 +343,35 @@ document.addEventListener('click', e => {
   $('d-title').textContent = t.dataset.title;
   const body = $('d-body');
   if (t.dataset.th !== undefined) body.innerHTML = thresholdHTML(C.thresholds[+t.dataset.th]);
-  else body.textContent = t.dataset.body || '—';
+  else body.innerHTML = '<span>' + esc(t.dataset.body || '—') + '</span>' +
+    (t.dataset.dt ? '<div class="st">연대에 관하여</div><div class="dtn">' + esc(t.dataset.dt) + '</div>' : '') +
+    (t.dataset.i ? '<div class="st rfl">개혁주의적 읽기</div><div class="bk rf">' + esc(t.dataset.i) + '</div>' : '') +
+    (t.dataset.x ? disputeHTML(JSON.parse(t.dataset.x)) : '');
   const tag = $('d-tag');
   tag.textContent = t.dataset.lane; tag.style.background = t.dataset.color;
   det.classList.add('open');
 });
 $('close').onclick = () => det.classList.remove('open');
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && det.classList.contains('open')) { det.classList.remove('open'); return; }
+  if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if ($('vtl').hidden) return;
+  const page = tlEl.clientWidth * 0.8;
+  const K = {
+    ArrowLeft: () => tlEl.scrollLeft -= 120, ArrowRight: () => tlEl.scrollLeft += 120,
+    ArrowUp: () => tlEl.scrollTop -= 80, ArrowDown: () => tlEl.scrollTop += 80,
+    PageUp: () => tlEl.scrollLeft -= page, PageDown: () => tlEl.scrollLeft += page,
+    Home: () => tlEl.scrollLeft = 0,
+    End: () => tlEl.scrollLeft = innerEl.offsetWidth,
+    '+': () => zoomTo(S * 1.6, anchorYear()), '=': () => zoomTo(S * 1.6, anchorYear()),
+    '-': () => zoomTo(S / 1.6, anchorYear())
+  };
+  if (K[e.key]) { e.preventDefault(); K[e.key](); paint(); }
+});
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-go]');
+  if (g) gotoYear(+g.dataset.go);
+});
 
 /* ---------- 검색 ---------- */
 let MATCHES = [], mi = 0, flyAnim = null;
@@ -297,7 +380,7 @@ let MATCHES = [], mi = 0, flyAnim = null;
 const norm = s => s.toLowerCase().replace(/[\s·『』「」()]/g, '');
 function score(it, q) {
   const d = it.el.dataset;
-  const t = d.title, b = d.body || '', k = d.k || '';
+  const t = d.title, b = d.s || d.body || '', k = d.k || '';
   const nq = norm(q), nt = norm(t), nk = norm(k), nb = norm(b);
   const ti = nt.indexOf(nq);
   let s;
@@ -331,7 +414,13 @@ function applyFilter() {
   MATCHES.sort((x, y) => y.s - x.s);
   MATCHES = MATCHES.map(m => m.it);
   mi = 0;
-  $('mlab').textContent = MATCHES.length ? '1 / ' + MATCHES.length + '건' : '결과 없음';
+  const nq = norm(q);
+  const inP = C.people.filter(p => norm([p.n, p.o, p.d, (p.w||[]).join(' '), p.k].filter(Boolean).join(' ')).includes(nq)).length;
+  const inT = C.threads.filter(t => norm(t.t + t.d + t.s.map(s => s[1] + s[2]).join(' ')).includes(nq)).length;
+  const inH = C.thresholds.filter(t => norm([t.t, t.old, t.q, t.ans, t.cost, t.i, t.cr.map(c => c[1]).join(' ')].filter(Boolean).join(' ')).includes(nq)).length;
+  const extra = [inP && '인물 ' + inP, inT && '계보 ' + inT, inH && '문턱 ' + inH].filter(Boolean).join(' · ');
+  $('mlab').textContent = (MATCHES.length ? '1 / ' + MATCHES.length + '건' : '연표 결과 없음')
+    + (extra ? '  (' + extra + ')' : '');
   $('mnext').hidden = MATCHES.length < 2;
 }
 
@@ -360,7 +449,8 @@ function flyTo(toS, tx, ty, el) {
 function focusMatch(i) {
   if (!MATCHES.length) return;
   mi = (i + MATCHES.length) % MATCHES.length;
-  $('mlab').textContent = (mi + 1) + ' / ' + MATCHES.length + '건';
+  const tail = $('mlab').textContent.replace(/^[^(]*/, '');
+  $('mlab').textContent = (mi + 1) + ' / ' + MATCHES.length + '건  ' + tail;
   const it = MATCHES[mi];
   const toS = Math.max(S, 1.6);
 
@@ -403,8 +493,20 @@ $('lvl').onclick = () => {
 $('find').addEventListener('input', onFind);
 $('clear').onclick = () => { $('find').value = ''; applyFilter(); layout(); };
 
+/* ---------- 연표의 특정 연도로 이동 ---------- */
+function gotoYear(y) {
+  show('tl');
+  const to = Math.max(S, 1.6);
+  const keep = S; S = to; layout();
+  const maxX = Math.max(0, innerEl.offsetWidth - tlEl.clientWidth);
+  const tx = Math.max(0, Math.min(maxX, xOf(y, eraX()) + LW - tlEl.clientWidth / 2));
+  S = keep; layout();
+  const el = document.createElement('div');
+  flyTo(to, tx, 0, el);
+}
+
 /* ---------- 탭 ---------- */
-const VIEWS = { tl: 'vtl', th: 'vth', pe: 'vpe', tr: 'vtr' };
+const VIEWS = { tl: 'vtl', th: 'vth', pe: 'vpe', tr: 'vtr', hv: 'vhv' };
 function show(k) {
   Object.entries(VIEWS).forEach(([n, id]) => {
     $(id).hidden = n !== k;
@@ -420,7 +522,7 @@ Object.keys(VIEWS).forEach(k => $('tab-' + k).onclick = () => show(k));
 document.title = C.meta.title + ' · ' + C.meta.sub;
 buildTimeline(); tickIv = C.eras.map(ivFor).join(',');
 layout();
-drawThresholds(); drawPeople(); drawThreads();
+drawThresholds(); drawPeople(); drawThreads(); drawPerspective();
 show(VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'tl');
 /* 다른 문서에서 ?y=연도 로 들어오면 그 지점을 열어 준다 */
 (function deepLink() {
